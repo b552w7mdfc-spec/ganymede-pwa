@@ -7,7 +7,8 @@ import { clampStep, contextGuideView } from '../model/progress';
 import { useUserStore } from '../store/userStore';
 import { Banner, contextInfo } from '../ui/components';
 import { hrefFor } from '../ui/router';
-import { sanitizeStepHtml } from '../ui/sanitize';
+import { renderStepHtml } from '../ui/stepHtml';
+import { useColorScheme } from '../ui/useColorScheme';
 
 type LoadState =
   | { s: 'loading' }
@@ -57,7 +58,8 @@ export function Reader({ guideId }: { guideId: number }) {
   const view = contextGuideView(user, user.active, guideId);
   const index = clampStep(view?.currentStep ?? 0, total);
   const current = guide?.steps[index];
-  const html = useMemo(() => (current ? sanitizeStepHtml(current.web_text) : ''), [current]);
+  const scheme = useColorScheme();
+  const html = useMemo(() => (current ? renderStepHtml(current.web_text, scheme).html : ''), [current, scheme]);
   const info = contextInfo(user, user.active);
 
   useEffect(() => {

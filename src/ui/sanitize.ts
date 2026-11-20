@@ -19,18 +19,27 @@ function ensureHooks(): void {
       node.setAttribute('loading', 'lazy');
       node.setAttribute('referrerpolicy', 'no-referrer');
     } else if (node.tagName === 'INPUT') {
-      // Cases des listes de tâches : affichage seul pour l'instant.
+      // Désactivé par défaut ; seules les cases des listes de tâches sont
+      // réactivées ensuite par le rendu des étapes.
       node.setAttribute('disabled', '');
     }
   });
 }
 
+const CONFIG = {
+  ADD_ATTR: GANYMEDE_ATTRS,
+  FORBID_TAGS: ['style', 'form', 'button', 'iframe', 'object', 'embed', 'textarea', 'select'],
+  FORBID_ATTR: ['id'],
+};
+
 /** Nettoie le HTML d'une étape (web_text) avant affichage. */
 export function sanitizeStepHtml(html: string): string {
   ensureHooks();
-  return DOMPurify.sanitize(html, {
-    ADD_ATTR: GANYMEDE_ATTRS,
-    FORBID_TAGS: ['style', 'form', 'button', 'iframe', 'object', 'embed', 'textarea', 'select'],
-    FORBID_ATTR: ['id'],
-  });
+  return DOMPurify.sanitize(html, CONFIG);
+}
+
+/** Variante qui renvoie un fragment DOM, pour post-traitement. */
+export function sanitizeToFragment(html: string): DocumentFragment {
+  ensureHooks();
+  return DOMPurify.sanitize(html, { ...CONFIG, RETURN_DOM_FRAGMENT: true });
 }
