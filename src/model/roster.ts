@@ -58,7 +58,9 @@ export function removeCharacter(state: UserState, id: string): UserState {
     .filter((t) => t.memberIds.length >= 2);
   const progress = { ...state.progress };
   delete progress[id];
-  const next: UserState = { ...state, characters, teams, progress };
+  const checks = { ...state.checks };
+  delete checks[id];
+  const next: UserState = { ...state, characters, teams, progress, checks };
   return { ...next, active: validActive(next, state.active) };
 }
 

@@ -33,16 +33,43 @@ export interface ActiveContext {
   id: string;
 }
 
-export const SCHEMA_VERSION = 1;
+/**
+ * Cases cochées : checks[characterId][guideId][stepIndex] = indices des cases
+ * cochées dans l'étape (triés, sans doublon). Index d'étape à partir de 0,
+ * index de case dans l'ordre d'apparition dans l'étape.
+ */
+export type ChecksMap = Record<string, Record<string, Record<string, number[]>>>;
+
+export interface Settings {
+  /** Garder l'écran allumé dans le lecteur. */
+  keepAwake: boolean;
+  /** Facteur de taille du texte du lecteur (1 = normal). */
+  fontScale: number;
+}
+
+export const DEFAULT_SETTINGS: Settings = { keepAwake: true, fontScale: 1 };
+export const FONT_SCALES = [0.85, 1, 1.15, 1.3, 1.5, 1.75] as const;
+
+export const SCHEMA_VERSION = 2;
 
 export interface UserState {
   schemaVersion: typeof SCHEMA_VERSION;
   characters: Character[];
   teams: Team[];
   progress: ProgressMap;
+  checks: ChecksMap;
+  settings: Settings;
   active: ActiveContext | null;
 }
 
 export function emptyUserState(): UserState {
-  return { schemaVersion: SCHEMA_VERSION, characters: [], teams: [], progress: {}, active: null };
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    characters: [],
+    teams: [],
+    progress: {},
+    checks: {},
+    settings: { ...DEFAULT_SETTINGS },
+    active: null,
+  };
 }

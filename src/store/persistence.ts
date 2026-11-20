@@ -38,7 +38,12 @@ export async function loadUserState(): Promise<LoadResult> {
     return { state, firstLaunch: true };
   }
   const migrated = migrateUserState(raw);
-  if (migrated.ok) return { state: migrated.value, firstLaunch: false };
+  if (migrated.ok) {
+    // Données d'une version antérieure : on enregistre la version migrée.
+    const v = typeof raw === 'object' && raw !== null ? (raw as { schemaVersion?: unknown }).schemaVersion : undefined;
+    if (v !== migrated.value.schemaVersion) await saveUserState(migrated.value);
+    return { state: migrated.value, firstLaunch: false };
+  }
 
   // Données illisibles : on les met de côté plutôt que de les écraser.
   const backupKey = `user-state-unreadable-${Date.now()}`;

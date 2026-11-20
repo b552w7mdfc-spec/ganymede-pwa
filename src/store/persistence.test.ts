@@ -36,3 +36,14 @@ describe('persistance de l’état utilisateur', () => {
     expect(r.state).toEqual(emptyUserState());
   });
 });
+
+describe('migration au chargement', () => {
+  it('des données v1 stockées sont migrées et réenregistrées en v2', async () => {
+    const store = createStore('guide-dofus-user', 'state');
+    await set('user-state', { schemaVersion: 1, characters: [], teams: [], progress: {}, active: null }, store);
+    const r = await loadUserState();
+    expect(r.state.schemaVersion).toBe(2);
+    const { get } = await import('idb-keyval');
+    expect((await get<{ schemaVersion: number }>('user-state', store))?.schemaVersion).toBe(2);
+  });
+});

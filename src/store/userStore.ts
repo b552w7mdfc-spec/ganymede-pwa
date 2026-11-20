@@ -9,7 +9,15 @@ import {
   updateCharacter,
   updateTeam,
 } from '../model/roster';
-import { emptyUserState, type ActiveContext, type Character, type GuideId, type UserState } from '../model/types';
+import { toggleTask } from '../model/tasks';
+import {
+  emptyUserState,
+  type ActiveContext,
+  type Character,
+  type GuideId,
+  type Settings,
+  type UserState,
+} from '../model/types';
 import { loadUserState, saveUserState } from './persistence';
 
 interface UserStore {
@@ -33,6 +41,10 @@ interface UserStore {
   openGuide(guideId: GuideId): void;
   step(guideId: GuideId, totalSteps: number, action: StepAction): void;
   alignTeam(teamId: string, guideId: GuideId, totalSteps: number, step: number): void;
+  /** Ouvre un guide puis, si demandé, va directement à une étape. */
+  openGuideAt(guideId: GuideId, totalSteps: number, step?: number): void;
+  toggleTask(guideId: GuideId, step: number, box: number): void;
+  updateSettings(patch: Partial<Settings>): void;
 
   replaceAll(state: UserState): void;
 }
@@ -81,6 +93,17 @@ export const useUserStore = create<UserStore>()((set, get) => {
     openGuide: (guideId) => update((s) => openGuide(s, s.active, guideId, Date.now())),
     step: (guideId, total, action) => update((s) => applyStepAction(s, s.active, guideId, total, action, Date.now())),
     alignTeam: (teamId, guideId, total, step) => update((s) => alignTeam(s, teamId, guideId, total, step, Date.now())),
+
+    openGuideAt: (guideId, total, step) =>
+      update((s) => {
+        const now = Date.now();
+        const opened = openGuide(s, s.active, guideId, now);
+        return step === undefined
+          ? opened
+          : applyStepAction(opened, opened.active, guideId, total, { type: 'goto', step }, now);
+      }),
+    toggleTask: (guideId, step, box) => update((s) => toggleTask(s, s.active, guideId, step, box)),
+    updateSettings: (patch) => update((s) => ({ ...s, settings: { ...s.settings, ...patch } })),
 
     replaceAll: (state) => update(() => state),
   };

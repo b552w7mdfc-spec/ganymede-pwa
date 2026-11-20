@@ -1,7 +1,10 @@
 import { validActive } from './roster';
 import {
+  DEFAULT_SETTINGS,
   SCHEMA_VERSION,
   type ActiveContext,
+  type ChecksMap,
+  type Settings,
   type Character,
   type GuideProgress,
   type ProgressMap,
@@ -65,6 +68,38 @@ function parseProgress(v: unknown, characterIds: Set<string>): Result<ProgressMa
   return { ok: true, value: out };
 }
 
+function parseChecks(v: unknown, characterIds: Set<string>): Result<ChecksMap> {
+  if (!isObj(v)) return { ok: false, error: 'Cases cochées : format invalide.' };
+  const out: ChecksMap = {};
+  for (const [charId, byGuide] of Object.entries(v)) {
+    if (!characterIds.has(charId)) return { ok: false, error: `Cases cochées : perso inconnu (${charId}).` };
+    if (!isObj(byGuide)) return { ok: false, error: 'Cases cochées : format invalide.' };
+    const g: Record<string, Record<string, number[]>> = {};
+    for (const [guideId, bySteps] of Object.entries(byGuide)) {
+      if (!/^\d+$/.test(guideId) || !isObj(bySteps))
+        return { ok: false, error: `Cases cochées : guide invalide (${guideId}).` };
+      const st: Record<string, number[]> = {};
+      for (const [step, boxes] of Object.entries(bySteps)) {
+        if (!/^\d+$/.test(step) || !Array.isArray(boxes) ||
+          !boxes.every((b) => isNum(b) && Number.isInteger(b) && b >= 0))
+          return { ok: false, error: `Cases cochées du guide ${guideId} : valeurs invalides.` };
+        if (boxes.length) st[step] = [...new Set(boxes as number[])].sort((a, b) => a - b);
+      }
+      if (Object.keys(st).length) g[guideId] = st;
+    }
+    if (Object.keys(g).length) out[charId] = g;
+  }
+  return { ok: true, value: out };
+}
+
+function parseSettings(v: unknown): Settings {
+  const s = isObj(v) ? v : {};
+  return {
+    keepAwake: typeof s.keepAwake === 'boolean' ? s.keepAwake : DEFAULT_SETTINGS.keepAwake,
+    fontScale: isNum(s.fontScale) && s.fontScale >= 0.5 && s.fontScale <= 3 ? s.fontScale : DEFAULT_SETTINGS.fontScale,
+  };
+}
+
 function parseActive(v: unknown): ActiveContext | null {
   if (!isObj(v)) return null;
   if ((v.kind === 'character' || v.kind === 'team') && isStr(v.id)) return { kind: v.kind, id: v.id };
@@ -100,15 +135,25 @@ export function parseUserState(raw: unknown): Result<UserState> {
   const progress = parseProgress(raw.progress ?? {}, ids);
   if (!progress.ok) return progress;
 
+  const checks = parseChecks(raw.checks ?? {}, ids);
+  if (!checks.ok) return checks;
+
   const state: UserState = {
     schemaVersion: SCHEMA_VERSION,
     characters,
     teams,
     progress: progress.value,
+    checks: checks.value,
+    settings: parseSettings(raw.settings),
     active: null,
   };
   state.active = validActive(state, parseActive(raw.active));
   return { ok: true, value: state };
+}
+
+/** v1 -> v2 : ajout des cases cochées (vides) et des réglages par défaut. */
+export function migrateV1toV2(v1: Record<string, unknown>): Record<string, unknown> {
+  return { ...v1, schemaVersion: 2, checks: {}, settings: { ...DEFAULT_SETTINGS } };
 }
 
 /**
@@ -117,8 +162,9 @@ export function parseUserState(raw: unknown): Result<UserState> {
  */
 export function migrateUserState(raw: unknown): Result<UserState> {
   if (!isObj(raw)) return { ok: false, error: 'Données illisibles.' };
-  // Aucune migration pour l'instant : v1 est la seule version.
-  return parseUserState(raw);
+  let data: Record<string, unknown> = raw;
+  if (data.schemaVersion === 1) data = migrateV1toV2(data);
+  return parseUserState(data);
 }
 
 // ---------- Export / import ----------
