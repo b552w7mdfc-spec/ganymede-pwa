@@ -8,9 +8,9 @@ import { Banner, formatAgo } from '../ui/components';
 import { hrefFor } from '../ui/router';
 
 const STATUS_LABELS: Record<GuideStatus, string> = {
+  gp: 'GP',
   certified: 'Certifiés',
   public: 'Publics',
-  gp: 'GP',
 };
 
 const LANG_LABELS: Record<GuideLang | 'all', string> = {
@@ -28,7 +28,7 @@ export function normalize(s: string): string {
 
 // Filtres conservés le temps de la session (retour depuis un guide).
 let lastFilters: { status: GuideStatus; lang: GuideLang | 'all'; query: string } = {
-  status: 'certified',
+  status: 'gp',
   lang: 'fr',
   query: '',
 };
