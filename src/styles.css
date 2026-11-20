@@ -15,6 +15,14 @@
   --danger: #b3261e;
   --danger-soft: #f9dedc;
   --shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  --tag-bg: #efeadf;
+  --tag-border: #d3cab7;
+  --link: #1d5fa8;
+  /* Statuts de quête (texte / fond) */
+  --q-setup: #5b4a9e; --q-setup-bg: #e9e4fa;
+  --q-start: #1d6b4f; --q-start-bg: #d5ebe1;
+  --q-progress: #8a5300; --q-progress-bg: #fbe8c8;
+  --q-end: #a2262d; --q-end-bg: #f9dedc;
   --radius: 14px;
   --tap: 44px;
   --top-h: 56px;
@@ -43,6 +51,13 @@
     --danger: #f2827a;
     --danger-soft: #431d1a;
     --shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+    --tag-bg: #2e333b;
+    --tag-border: #444a54;
+    --link: #8cc0ff;
+    --q-setup: #c9bcff; --q-setup-bg: #332c52;
+    --q-start: #7fdcb5; --q-start-bg: #1e3a2f;
+    --q-progress: #f6c674; --q-progress-bg: #3d2f17;
+    --q-end: #ff9b94; --q-end-bg: #47201d;
   }
 }
 
@@ -378,3 +393,111 @@ h2 { font-size: 1.1rem; }
 .step-html li[data-type='taskItem'] { display: flex; gap: 8px; align-items: flex-start; }
 .step-html li[data-type='taskItem'] > label { flex: none; }
 .step-html li[data-type='taskItem'] > div > p { margin: 0; }
+
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.back-link { justify-content: flex-start; width: 100%; color: var(--link); gap: 0; }
+.back-link > :first-child { margin-right: 6px; }
+.back-link > .ellipsis { flex: 0 1 auto; }
+
+/* ---------- Toast ---------- */
+.toast-zone {
+  position: fixed; z-index: 60; left: 0; right: 0;
+  bottom: calc(var(--bottom-h) + 24px + var(--safe-bottom));
+  display: flex; justify-content: center; pointer-events: none;
+  padding: 0 16px;
+}
+.toast {
+  max-width: 100%;
+  background: var(--text); color: var(--bg);
+  padding: 10px 16px; border-radius: 999px;
+  font-size: 0.9rem; font-weight: 600;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  animation: toast-in 0.15s ease-out;
+}
+@keyframes toast-in { from { transform: translateY(8px); opacity: 0; } }
+
+/* ---------- Balises Ganymède ---------- */
+.step-html .ico { width: 1em; height: 1em; flex: none; vertical-align: -0.12em; }
+
+.ctag {
+  display: inline-flex; align-items: center; gap: 4px;
+  max-width: 100%;
+  padding: 1px 8px 1px 6px; margin: 1px 0;
+  min-height: 1.9em;
+  border-radius: 999px;
+  border: 1px solid var(--tag-border);
+  background: var(--tag-bg);
+  color: var(--text);
+  font-weight: 600;
+  vertical-align: middle;
+  line-height: 1.25;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.ctag:active { transform: scale(0.97); }
+.ctag.armed { box-shadow: 0 0 0 3px var(--accent); }
+.ctag .ctag-img { width: 1.4em; height: 1.4em; object-fit: contain; margin: 0; }
+.ctag .ctag-name { overflow-wrap: anywhere; }
+.ctag-monster .ico { color: #c0392b; }
+.ctag-item .ico { color: #b7791f; }
+.ctag-quest .ico { color: #2f7dd1; }
+.ctag-dungeon .ico { color: #7e57c2; }
+@media (prefers-color-scheme: dark) {
+  .ctag-monster .ico { color: #ff8a80; }
+  .ctag-item .ico { color: #f6c674; }
+  .ctag-quest .ico { color: #8cc0ff; }
+  .ctag-dungeon .ico { color: #c9bcff; }
+}
+
+.gstep {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--link);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  padding: 4px 0;
+  touch-action: manipulation;
+}
+
+.qblock {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--qc, var(--border));
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 0 0 10px;
+}
+.qblock-setup { --qc: var(--q-setup); }
+.qblock-start { --qc: var(--q-start); }
+.qblock-in_progress { --qc: var(--q-progress); }
+.qblock-end { --qc: var(--q-end); }
+.qb-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-weight: 700; }
+.qb-head .ico { color: var(--qc); }
+.qb-name { flex: 1; min-width: 0; }
+.qb-status {
+  font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+}
+.qb-status-setup { color: var(--q-setup); background: var(--q-setup-bg); }
+.qb-status-start { color: var(--q-start); background: var(--q-start-bg); }
+.qb-status-in_progress { color: var(--q-progress); background: var(--q-progress-bg); }
+.qb-status-end { color: var(--q-end); background: var(--q-end-bg); }
+.qblock > :last-child { margin-bottom: 0; }
+
+/* Listes de tâches : cases actives, grandes zones tactiles */
+.step-html li[data-type='taskItem'] { align-items: flex-start; padding: 2px 0; }
+.step-html li[data-type='taskItem'] > label {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--tap); min-height: var(--tap);
+  margin: -8px 0 -8px -10px;
+  cursor: pointer;
+}
+.step-html li[data-type='taskItem'] > label > span { display: none; }
+.step-html li[data-type='taskItem'] input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
+.step-html li[data-type='taskItem'] > div { flex: 1; min-width: 0; padding-top: 2px; }
+.step-html li.task-done > div { opacity: 0.55; text-decoration: line-through; text-decoration-thickness: 1px; }

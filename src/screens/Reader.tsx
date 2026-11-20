@@ -4,9 +4,12 @@ import { errorMessage } from '../api/client';
 import { downloadGuide, findCachedSummary, isUpdateAvailable, loadGuide } from '../api/guides';
 import type { CachedGuide } from '../api/types';
 import { clampStep, contextGuideView } from '../model/progress';
+import { stepTaskStates } from '../model/tasks';
+import { useNavStore } from '../store/navStore';
 import { useUserStore } from '../store/userStore';
 import { Banner, contextInfo } from '../ui/components';
-import { hrefFor } from '../ui/router';
+import { hrefFor, navigate, replaceSilently } from '../ui/router';
+import { StepContent, type GuideLink } from '../ui/StepContent';
 import { renderStepHtml } from '../ui/stepHtml';
 import { useColorScheme } from '../ui/useColorScheme';
 
@@ -15,11 +18,20 @@ type LoadState =
   | { s: 'ready'; cached: CachedGuide }
   | { s: 'error'; message: string };
 
-export function Reader({ guideId }: { guideId: number }) {
+interface Props {
+  guideId: number;
+  /** Étape demandée par un lien (index 0), appliquée une fois à l'ouverture. */
+  initialStep?: number;
+}
+
+export function Reader({ guideId, initialStep }: Props) {
   const user = useUserStore((st) => st.user);
+  const openGuideAt = useUserStore((st) => st.openGuideAt);
   const openGuide = useUserStore((st) => st.openGuide);
   const step = useUserStore((st) => st.step);
   const alignTeam = useUserStore((st) => st.alignTeam);
+  const toggleTask = useUserStore((st) => st.toggleTask);
+  const navStack = useNavStore((st) => st.stack);
 
   const [load, setLoad] = useState<LoadState>({ s: 'loading' });
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -46,20 +58,35 @@ export function Reader({ guideId }: { guideId: number }) {
     };
   }, [guideId]);
 
-  // Ouvrir le guide crée la progression (étape 0) pour le contexte actif.
-  const ready = load.s === 'ready';
-  const activeKey = user.active ? `${user.active.kind}:${user.active.id}` : '';
-  useEffect(() => {
-    if (ready && activeKey) openGuide(guideId);
-  }, [ready, activeKey, guideId, openGuide]);
-
   const guide = load.s === 'ready' ? load.cached.guide : null;
   const total = guide?.steps.length ?? 0;
+
+  // Ouverture : crée la progression (étape 0) pour le contexte actif, et
+  // applique l'étape demandée par un lien. L'URL est ensuite nettoyée, donc
+  // chaque étape présente dans l'URL est une nouvelle demande.
+  const activeKey = user.active ? `${user.active.kind}:${user.active.id}` : '';
+  useEffect(() => {
+    if (!guide || !activeKey) return;
+    if (initialStep !== undefined) {
+      openGuideAt(guideId, guide.steps.length, initialStep);
+      replaceSilently({ name: 'guide', id: guideId });
+    } else {
+      openGuide(guideId);
+    }
+  }, [guide, activeKey, guideId, initialStep, openGuide, openGuideAt]);
+
   const view = contextGuideView(user, user.active, guideId);
   const index = clampStep(view?.currentStep ?? 0, total);
   const current = guide?.steps[index];
   const scheme = useColorScheme();
-  const html = useMemo(() => (current ? renderStepHtml(current.web_text, scheme).html : ''), [current, scheme]);
+  const rendered = useMemo(
+    () => (current ? renderStepHtml(current.web_text, scheme) : { html: '', taskCount: 0 }),
+    [current, scheme],
+  );
+  const taskStates = useMemo(
+    () => stepTaskStates(user, user.active, guideId, index, rendered.taskCount),
+    [user, guideId, index, rendered.taskCount],
+  );
   const info = contextInfo(user, user.active);
 
   useEffect(() => {
@@ -80,9 +107,45 @@ export function Reader({ guideId }: { guideId: number }) {
     }
   };
 
+  const onGuideLink = (link: GuideLink) => {
+    if (!guide) return;
+    if (link.guideId === 0 || link.guideId === guideId) {
+      step(guideId, total, { type: 'goto', step: link.stepNumber - 1 });
+      return;
+    }
+    useNavStore.getState().push({ guideId, step: index, guideName: guide.name });
+    // stepid = 0 : ouvrir là où en est le contexte actif.
+    navigate(
+      link.stepId === 0
+        ? { name: 'guide', id: link.guideId }
+        : { name: 'guide', id: link.guideId, step: link.stepNumber - 1 },
+    );
+  };
+
+  const goBackInStack = () => {
+    const top = useNavStore.getState().pop();
+    if (top) navigate({ name: 'guide', id: top.guideId, step: top.step });
+  };
+
+  const back = navStack[navStack.length - 1];
+  const backButton =
+    back && back.guideId !== guideId ? (
+      <button
+        type="button"
+        className="btn back-link"
+        onClick={goBackInStack}
+        aria-label={`Retour à ${back.guideName}, étape ${back.step + 1}`}
+      >
+        <span aria-hidden="true">←</span>
+        <span className="ellipsis">Retour à {back.guideName}</span>
+        <span style={{ flex: 'none' }}>, étape {back.step + 1}</span>
+      </button>
+    ) : null;
+
   if (load.s === 'loading') {
     return (
       <div className="screen">
+        {backButton}
         <p className="muted">Chargement du guide…</p>
       </div>
     );
@@ -90,6 +153,7 @@ export function Reader({ guideId }: { guideId: number }) {
   if (load.s === 'error') {
     return (
       <div className="screen">
+        {backButton}
         <Banner kind="error">
           <strong>Impossible d’ouvrir ce guide.</strong>
           <span>{load.message}</span>
@@ -108,6 +172,7 @@ export function Reader({ guideId }: { guideId: number }) {
 
   return (
     <div className="screen">
+      {backButton}
       <header className="reader-head">
         <h1>{g.name}</h1>
         <div className="reader-step-meta">
@@ -170,7 +235,13 @@ export function Reader({ guideId }: { guideId: number }) {
             </span>
             {current.map ? <span>{current.map}</span> : null}
           </div>
-          <div className="step-html" dangerouslySetInnerHTML={{ __html: html }} />
+          <StepContent
+            html={rendered.html}
+            taskStates={taskStates}
+            onToggleTask={(box) => toggleTask(guideId, index, box)}
+            onGuideLink={onGuideLink}
+            onImage={() => undefined}
+          />
         </article>
       ) : (
         <p className="muted">Ce guide ne contient aucune étape.</p>

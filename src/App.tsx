@@ -3,8 +3,9 @@ import { Catalog } from './screens/Catalog';
 import { Home } from './screens/Home';
 import { Manage } from './screens/Manage';
 import { Reader } from './screens/Reader';
+import { useNavStore } from './store/navStore';
 import { useUserStore } from './store/userStore';
-import { Banner, BottomTabs, ConfirmDialog, ContextPill, ContextSheet } from './ui/components';
+import { Banner, BottomTabs, ConfirmDialog, ContextPill, ContextSheet, Toast } from './ui/components';
 import { navigate, useRoute } from './ui/router';
 
 function goBack(): void {
@@ -25,8 +26,12 @@ export function App() {
     void hydrate();
   }, [hydrate]);
 
-  // Ferme la feuille si on change d'écran.
-  useEffect(() => setSheetOpen(false), [route.name]);
+  // Ferme la feuille si on change d'écran ; la pile des sauts entre guides
+  // n'a de sens que dans le lecteur.
+  useEffect(() => {
+    setSheetOpen(false);
+    if (route.name !== 'guide') useNavStore.getState().clear();
+  }, [route.name]);
 
   const reading = route.name === 'guide';
 
@@ -66,7 +71,7 @@ export function App() {
             <p className="muted">Chargement…</p>
           </div>
         ) : route.name === 'guide' ? (
-          <Reader key={route.id} guideId={route.id} />
+          <Reader key={route.id} guideId={route.id} initialStep={route.step} />
         ) : route.name === 'catalog' ? (
           <Catalog />
         ) : route.name === 'manage' ? (
@@ -84,6 +89,7 @@ export function App() {
 
       {sheetOpen ? <ContextSheet onClose={() => setSheetOpen(false)} /> : null}
       <ConfirmDialog />
+      <Toast />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { ActiveContext, Character, UserState } from '../model/types';
 import { useDialogStore } from '../store/dialogStore';
+import { useToastStore } from '../store/toastStore';
 import { useUserStore } from '../store/userStore';
 import { hrefFor, type Route } from './router';
 
@@ -211,4 +212,18 @@ export function formatAgo(ms: number, now = Date.now()): string {
   if (h < 24) return `il y a ${h} h`;
   const days = Math.round(h / 24);
   return `il y a ${days} j`;
+}
+
+export function Toast() {
+  const message = useToastStore((s) => s.message);
+  const seq = useToastStore((s) => s.seq);
+  return (
+    <div className="toast-zone" aria-live="polite">
+      {message ? (
+        <div key={seq} className="toast">
+          {message}
+        </div>
+      ) : null}
+    </div>
+  );
 }
