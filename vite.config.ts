@@ -3,12 +3,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig({
+// Publié sur GitHub Pages sous https://<compte>.github.io/ganymede-pwa/.
+// En dev, on reste à la racine.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/ganymede-pwa/' : '/',
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Guide Dofus',
         short_name: 'Guide Dofus',
@@ -58,4 +60,4 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['src/test-setup.ts'],
   },
-});
+}));

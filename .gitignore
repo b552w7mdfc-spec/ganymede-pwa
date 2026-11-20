@@ -5,3 +5,10 @@ dev-dist
 .DS_Store
 .vite
 coverage
+
+# Contenu des guides Ganymède : jamais publié (échantillons, caches, téléchargements)
+docs/samples/
+# Notes de reconnaissance de l'API Ganymède : usage local uniquement
+docs/api-recon.md
+guide_*.json
+guides_*.json

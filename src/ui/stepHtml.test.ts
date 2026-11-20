@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { contrast, parseColor, THEME } from './color';
 import { renderStepHtml } from './stepHtml';
-import guide2 from '../../docs/samples/guide_2.json';
+import { loadSampleGuide } from '../test/samples';
+
+const guide2 = loadSampleGuide(2);
+const guide2975 = loadSampleGuide(2975);
+const guide3595 = loadSampleGuide(3595);
+const HAS_SAMPLES = !!(guide2 && guide2975 && guide3595);
 
 const colorsIn = (html: string) => [...html.matchAll(/(?<!-)color: (rgb\([^)]*\))/g)].map((m) => m[1]!);
 
-describe('renderStepHtml : couleurs', () => {
+describe.skipIf(!HAS_SAMPLES)('renderStepHtml : couleurs des échantillons (docs/samples/)', () => {
   it('toutes les couleurs du guide [GP1] atteignent 4.5:1 dans les deux thèmes', () => {
     for (const scheme of ['light', 'dark'] as const) {
       let n = 0;
-      for (const step of guide2.steps) {
+      for (const step of guide2!.steps) {
         for (const c of colorsIn(renderStepHtml(step.web_text, scheme).html)) {
           n++;
           expect(contrast(parseColor(c)!, THEME[scheme].background)).toBeGreaterThanOrEqual(4.5);
@@ -18,6 +23,9 @@ describe('renderStepHtml : couleurs', () => {
       expect(n).toBeGreaterThan(1500);
     }
   });
+});
+
+describe('renderStepHtml : styles', () => {
 
   it('ne garde que couleur, surlignage et alignement', () => {
     const html = renderStepHtml(
@@ -31,11 +39,9 @@ describe('renderStepHtml : couleurs', () => {
   });
 });
 
-import guide2975 from '../../docs/samples/guide_2975.json';
-import guide3595 from '../../docs/samples/guide_3595.json';
 import { dofusDbUrl } from './stepHtml';
 
-const SAMPLES = { 2: guide2.steps, 2975: guide2975.steps, 3595: guide3595.steps };
+const SAMPLES = HAS_SAMPLES ? { 2: guide2!.steps, 2975: guide2975!.steps, 3595: guide3595!.steps } : {};
 const parse = (html: string) => {
   const d = document.createElement('div');
   d.innerHTML = html;
@@ -43,7 +49,7 @@ const parse = (html: string) => {
 };
 const count = (s: string, re: RegExp) => (s.match(re) ?? []).length;
 
-describe('renderStepHtml : balises Ganymède sur les échantillons', () => {
+describe.skipIf(!HAS_SAMPLES)('renderStepHtml : balises Ganymède sur les échantillons (docs/samples/)', () => {
   for (const [id, steps] of Object.entries(SAMPLES)) {
     it(`guide ${id} : chaque balise est interprétée`, () => {
       for (const step of steps) {
@@ -90,7 +96,7 @@ describe('renderStepHtml : balises Ganymède sur les échantillons', () => {
   }
 
   it('cas précis du guide [GP1] : liens interne et externe, quête, monstre', () => {
-    const step = (n: number) => parse(renderStepHtml(guide2.steps[n - 1]!.web_text, 'dark').html);
+    const step = (n: number) => parse(renderStepHtml(guide2!.steps[n - 1]!.web_text, 'dark').html);
     // Étape 127 : lien vers [GP4] (guide 3), début du guide
     const toOther = [...step(127).querySelectorAll<HTMLElement>('.gstep')].find((l) => l.dataset.guideid === '3');
     expect(toOther?.dataset).toMatchObject({ stepid: '0', stepnumber: '1' });
@@ -103,6 +109,9 @@ describe('renderStepHtml : balises Ganymède sur les échantillons', () => {
     expect(qb?.querySelector('.qb-status')?.textContent).toBe('Fin');
   });
 
+});
+
+describe('renderStepHtml : sécurité et images', () => {
   it('les images hors pastilles sont agrandissables, pas celles des pastilles', () => {
     const dom = parse(
       renderStepHtml(
