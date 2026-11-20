@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { CHARACTER_COLORS } from '../model/roster';
 import { buildExport, parseImport } from '../model/schema';
+import { nextFontScale } from '../model/settings';
 import type { Character, Team } from '../model/types';
 import { confirmDialog } from '../store/dialogStore';
 import { useUserStore } from '../store/userStore';
@@ -410,11 +411,53 @@ export function Manage() {
         </ul>
       </section>
 
+      {/* ----- Réglages ----- */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h2>Réglages</h2>
+        <label className="switch-row card" style={{ padding: '6px 14px' }}>
+          <input
+            type="checkbox"
+            checked={user.settings.keepAwake}
+            onChange={(e) => actions.updateSettings({ keepAwake: e.target.checked })}
+          />
+          <span className="grow">
+            Garder l’écran allumé dans le lecteur
+            <div className="sub small muted">Si l’appareil le permet.</div>
+          </span>
+        </label>
+        <div className="row card" style={{ padding: '6px 14px' }}>
+          <span className="grow">Taille du texte</span>
+          <span className="muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {Math.round(user.settings.fontScale * 100)} %
+          </span>
+          <button
+            type="button"
+            className="btn small"
+            aria-label="Réduire le texte"
+            onClick={() =>
+              actions.updateSettings({ fontScale: nextFontScale(useUserStore.getState().user.settings.fontScale, -1) })
+            }
+          >
+            A−
+          </button>
+          <button
+            type="button"
+            className="btn small"
+            aria-label="Agrandir le texte"
+            onClick={() =>
+              actions.updateSettings({ fontScale: nextFontScale(useUserStore.getState().user.settings.fontScale, 1) })
+            }
+          >
+            A+
+          </button>
+        </div>
+      </section>
+
       {/* ----- Sauvegarde ----- */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <h2>Sauvegarde</h2>
         <p className="muted small" style={{ margin: 0 }}>
-          Persos, équipes et progression. Les guides eux-mêmes ne sont pas inclus (ils se re-téléchargent).
+          Persos, équipes, progression, cases cochées et réglages. Les guides eux-mêmes ne sont pas inclus (ils se re-téléchargent).
         </p>
         {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
         <div className="row">

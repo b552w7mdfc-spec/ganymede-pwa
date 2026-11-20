@@ -501,3 +501,65 @@ h2 { font-size: 1.1rem; }
 .step-html li[data-type='taskItem'] input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
 .step-html li[data-type='taskItem'] > div { flex: 1; min-width: 0; padding-top: 2px; }
 .step-html li.task-done > div { opacity: 0.55; text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* ---------- Lecteur : barre d'outils, position, feuilles ---------- */
+.reader-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.reader-toolbar .spacer { flex: 1; }
+.step-counter { font-variant-numeric: tabular-nums; }
+.font-controls { display: flex; gap: 6px; }
+.font-controls .btn { min-width: var(--tap); padding: 0 10px; }
+
+.btn.travel {
+  width: 100%;
+  min-height: 52px;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--text);
+}
+.btn.travel .pos { font-size: 1.15rem; }
+.btn.travel .travel-map { flex: 1; text-align: left; font-weight: 500; color: var(--text-muted); }
+.btn.travel .travel-hint {
+  margin-left: auto; flex: none;
+  font-size: 0.8rem; font-weight: 700; color: var(--accent);
+  border: 1px solid currentColor; border-radius: 6px; padding: 1px 6px;
+}
+
+.step-sheet { max-height: 85dvh; }
+.step-list { gap: 4px; }
+.step-list .list-item { min-height: var(--tap); padding: 6px 12px; }
+.step-num {
+  flex: none; min-width: 2.2em; text-align: right;
+  font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-muted);
+}
+.step-list .selected .step-num { color: var(--accent); }
+
+.step-html img.zoomable { cursor: zoom-in; }
+
+.lightbox {
+  position: fixed; inset: 0; z-index: 70;
+  background: rgb(0 0 0 / 0.92);
+  display: flex; align-items: center; justify-content: center;
+  touch-action: none;
+  overflow: hidden;
+  animation: fade 0.15s ease-out;
+}
+.lightbox img {
+  max-width: 100vw; max-height: 100dvh;
+  object-fit: contain;
+  transform-origin: center center;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  will-change: transform;
+}
+.lightbox-close {
+  position: absolute;
+  top: calc(8px + var(--safe-top)); right: calc(8px + var(--safe-right));
+  width: var(--tap); height: var(--tap);
+  border-radius: 50%; border: none;
+  background: rgb(255 255 255 / 0.18); color: #fff; font-size: 1.2rem;
+}
+
+.switch-row { display: flex; align-items: center; gap: 12px; min-height: var(--tap); }
+.switch-row input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }

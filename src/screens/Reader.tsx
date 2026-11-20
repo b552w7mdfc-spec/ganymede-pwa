@@ -1,16 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { errorMessage } from '../api/client';
 import { downloadGuide, findCachedSummary, isUpdateAvailable, loadGuide } from '../api/guides';
 import type { CachedGuide } from '../api/types';
 import { clampStep, contextGuideView } from '../model/progress';
 import { stepTaskStates } from '../model/tasks';
+import { nextFontScale } from '../model/settings';
+import { FONT_SCALES } from '../model/types';
+import { toast } from '../store/toastStore';
 import { useNavStore } from '../store/navStore';
 import { useUserStore } from '../store/userStore';
+import { copyText } from '../ui/clipboard';
 import { Banner, contextInfo } from '../ui/components';
+import { Lightbox } from '../ui/Lightbox';
 import { hrefFor, navigate, replaceSilently } from '../ui/router';
 import { StepContent, type GuideLink } from '../ui/StepContent';
 import { renderStepHtml } from '../ui/stepHtml';
+import { StepSheet } from '../ui/StepSheet';
+import { useSwipe } from '../ui/useSwipe';
+import { useWakeLock } from '../ui/useWakeLock';
 import { useColorScheme } from '../ui/useColorScheme';
 
 type LoadState =
@@ -32,11 +40,18 @@ export function Reader({ guideId, initialStep }: Props) {
   const alignTeam = useUserStore((st) => st.alignTeam);
   const toggleTask = useUserStore((st) => st.toggleTask);
   const navStack = useNavStore((st) => st.stack);
+  const updateSettings = useUserStore((st) => st.updateSettings);
+  const settings = user.settings;
 
   const [load, setLoad] = useState<LoadState>({ s: 'loading' });
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [zoomSrc, setZoomSrc] = useState<string | null>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
+
+  useWakeLock(settings.keepAwake);
 
   // Chargement : cache local, sinon un seul téléchargement via la file.
   useEffect(() => {
@@ -89,9 +104,30 @@ export function Reader({ guideId, initialStep }: Props) {
   );
   const info = contextInfo(user, user.active);
 
+  // À chaque changement d'étape : retour en haut du contenu.
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [index, guideId]);
+
+  const canStep = !!user.active && total > 0;
+  useSwipe(
+    screenRef,
+    (dir) => {
+      if (dir === 'left' && index < total - 1) step(guideId, total, { type: 'next' });
+      else if (dir === 'right' && index > 0) step(guideId, total, { type: 'prev' });
+    },
+    canStep && !sheetOpen && !zoomSrc,
+  );
+
+  const fontIdx = Math.max(0, FONT_SCALES.findIndex((f) => f >= settings.fontScale - 1e-6));
+  // Lit l'état courant du store : deux appuis rapides comptent bien double.
+  const setFont = (delta: number) =>
+    updateSettings({ fontScale: nextFontScale(useUserStore.getState().user.settings.fontScale, delta) });
+
+  const copyTravel = (x: number, y: number) => {
+    const cmd = `/travel ${x},${y}`;
+    void copyText(cmd).then((ok) => toast(ok ? `Copié : ${cmd}` : 'Copie impossible'));
+  };
 
   const doUpdate = async () => {
     setUpdating(true);
@@ -166,21 +202,41 @@ export function Reader({ guideId, initialStep }: Props) {
   }
 
   const g = load.cached.guide;
-  const canStep = !!user.active && total > 0;
   const atLast = index >= total - 1;
   const finished = view?.finished ?? false;
 
   return (
-    <div className="screen">
+    <div className="screen" ref={screenRef}>
       {backButton}
       <header className="reader-head">
         <h1>{g.name}</h1>
-        <div className="reader-step-meta">
-          <strong>
-            Étape {total > 0 ? index + 1 : 0} / {total}
-          </strong>
+        <div className="reader-toolbar">
+          <button
+            type="button"
+            className="btn step-counter"
+            disabled={total === 0}
+            onClick={() => setSheetOpen(true)}
+            aria-label={`Étape ${index + 1} sur ${total}. Choisir une étape`}
+          >
+            Étape {total > 0 ? index + 1 : 0} / {total} <span aria-hidden="true">▾</span>
+          </button>
           {finished ? <span className="badge ok">Terminé</span> : null}
           {view?.desync ? <span className="badge warn">Désynchronisé</span> : null}
+          <span className="spacer" />
+          <div className="font-controls" role="group" aria-label="Taille du texte">
+            <button type="button" className="btn small" aria-label="Réduire le texte" disabled={fontIdx <= 0} onClick={() => setFont(-1)}>
+              A−
+            </button>
+            <button
+              type="button"
+              className="btn small"
+              aria-label="Agrandir le texte"
+              disabled={fontIdx >= FONT_SCALES.length - 1}
+              onClick={() => setFont(1)}
+            >
+              A+
+            </button>
+          </div>
         </div>
       </header>
 
@@ -228,19 +284,26 @@ export function Reader({ guideId, initialStep }: Props) {
 
       {current ? (
         <article className="card">
-          {current.name ? <h2 style={{ marginBottom: 6 }}>{current.name}</h2> : null}
-          <div className="reader-step-meta small muted" style={{ marginBottom: 10 }}>
+          {current.name ? <h2 style={{ marginBottom: 10 }}>{current.name}</h2> : null}
+          <button
+            type="button"
+            className="btn travel no-swipe"
+            onClick={() => copyTravel(current.pos_x, current.pos_y)}
+            aria-label={`Copier /travel ${current.pos_x},${current.pos_y}`}
+          >
             <span className="pos">
               [{current.pos_x}, {current.pos_y}]
             </span>
-            {current.map ? <span>{current.map}</span> : null}
-          </div>
+            {current.map ? <span className="travel-map ellipsis">{current.map}</span> : null}
+            <span className="travel-hint">/travel</span>
+          </button>
           <StepContent
             html={rendered.html}
             taskStates={taskStates}
             onToggleTask={(box) => toggleTask(guideId, index, box)}
             onGuideLink={onGuideLink}
-            onImage={() => undefined}
+            onImage={setZoomSrc}
+            style={{ fontSize: `${settings.fontScale}rem` }}
           />
         </article>
       ) : (
@@ -248,6 +311,19 @@ export function Reader({ guideId, initialStep }: Props) {
       )}
 
       {info ? <p className="muted small">Progression de : {info.name}</p> : null}
+
+      {sheetOpen ? (
+        <StepSheet
+          steps={g.steps}
+          current={index}
+          onClose={() => setSheetOpen(false)}
+          onPick={(i) => {
+            setSheetOpen(false);
+            step(guideId, total, { type: 'goto', step: i });
+          }}
+        />
+      ) : null}
+      {zoomSrc ? <Lightbox src={zoomSrc} onClose={() => setZoomSrc(null)} /> : null}
 
       {createPortal(
         <div className="bottombar">

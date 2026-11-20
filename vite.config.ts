@@ -31,6 +31,24 @@ export default defineConfig({
         // Les données de l'API sont gérées explicitement dans IndexedDB.
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
         navigateFallback: 'index.html',
+        // Images des guides (DofusDB, Ganymède, imgur…) : mises en cache à la
+        // première lecture pour fonctionner hors-ligne ensuite. Réponses
+        // opaques (pas de CORS) acceptées.
+        runtimeCaching: [
+          {
+            urlPattern: ({ request, sameOrigin }) => request.destination === 'image' && !sameOrigin,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'guide-images',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 1500,
+                maxAgeSeconds: 60 * 60 * 24 * 90,
+                purgeOnQuotaError: true,
+              },
+            },
+          },
+        ],
       },
     }),
   ],
